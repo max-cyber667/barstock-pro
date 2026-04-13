@@ -26,16 +26,30 @@ export default function RegisterPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { display_name: displayName } },
     });
 
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    // Créer le profil manuellement en cas d'échec du trigger
+    if (data.user) {
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: data.user.id,
+        email: data.user.email ?? email,
+        display_name: displayName,
+        role: "staff",
+      }, { onConflict: "id" });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+      }
     }
 
     router.push("/");
