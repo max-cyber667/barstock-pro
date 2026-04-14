@@ -24,6 +24,7 @@ export function StockTable({ location, initialRows, isManager }: Props) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterSupplier, setFilterSupplier] = useState("all");
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const { success, error: showError } = useToast();
@@ -39,9 +40,14 @@ export function StockTable({ location, initialRows, isManager }: Props) {
     new Set(rows.map((r) => r.items?.categories?.name).filter(Boolean))
   ) as string[];
 
+  const suppliers = Array.from(
+    new Set(rows.map((r) => r.items?.supplier).filter(Boolean))
+  ) as string[];
+
   const filtered = rows.filter((r) => {
     if (search && !r.items?.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCategory !== "all" && r.items?.categories?.name !== filterCategory) return false;
+    if (filterSupplier !== "all" && r.items?.supplier !== filterSupplier) return false;
     if (filterStatus === "low") {
       const threshold = location === "bar" ? r.items?.min_stock_bar : r.items?.min_stock_reserve;
       return threshold > 0 && r.quantity <= threshold && r.quantity > 0;
@@ -114,6 +120,14 @@ export function StockTable({ location, initialRows, isManager }: Props) {
             >
               <option value="all">Toutes catégories</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={filterSupplier}
+              onChange={(e) => setFilterSupplier(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="all">Tous fournisseurs</option>
+              {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select
               value={filterStatus}
