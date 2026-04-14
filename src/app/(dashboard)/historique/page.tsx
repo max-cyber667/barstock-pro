@@ -210,6 +210,14 @@ export default function HistoriquePage() {
               </button>
             ))}
           </div>
+          {(filterType !== "tous" || service !== "tous" || dateFrom || dateTo || filterItem) && (
+            <button
+              onClick={() => { setFilterType("tous"); setService("tous"); setDateFrom(""); setDateTo(""); setFilterItem(""); setPage(0); }}
+              className="text-xs px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 whitespace-nowrap"
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
         <input
           type="text"
