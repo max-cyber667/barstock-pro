@@ -37,7 +37,12 @@ export function StockTable({ location, initialRows, isManager }: Props) {
   const alerts = useStockAlerts(rows);
 
   const categories = Array.from(
-    new Set(rows.map((r) => r.items?.categories?.name).filter(Boolean))
+    new Set(
+      rows
+        .filter((r) => r.items?.supplier === filterSupplier)
+        .map((r) => r.items?.categories?.name)
+        .filter(Boolean)
+    )
   ) as string[];
 
   const suppliers = ["Maison Richard", "France Boissons", "Café Richard"];
@@ -121,7 +126,7 @@ export function StockTable({ location, initialRows, isManager }: Props) {
             </select>
             <select
               value={filterSupplier}
-              onChange={(e) => setFilterSupplier(e.target.value)}
+              onChange={(e) => { setFilterSupplier(e.target.value); setFilterCategory("all"); }}
               className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 min-w-0"
             >
               {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
