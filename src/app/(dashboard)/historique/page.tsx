@@ -148,12 +148,13 @@ export default function HistoriquePage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+        {/* Ligne 1 : type + service */}
+        <div className="flex gap-3">
           <select
             value={filterType}
             onChange={(e) => { setFilterType(e.target.value); setPage(0); }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             {MOVE_TYPES.map((t) => (
               <option key={t} value={t}>{t === "tous" ? "Tous les types" : movementTypeLabel(t)}</option>
@@ -166,36 +167,47 @@ export default function HistoriquePage() {
               <button
                 key={s}
                 onClick={() => { setService(s); setPage(0); }}
-                className={`px-3 py-2 transition-colors ${
+                className={`px-4 py-2.5 transition-colors ${
                   service === s
                     ? "bg-amber-500 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
+                    : "bg-white text-gray-600 active:bg-gray-100"
                 }`}
               >
                 {s === "tous" ? "Tout" : s === "midi" ? "Midi" : "Soir"}
               </button>
             ))}
           </div>
+        </div>
 
-          <input
-            type="text"
-            value={filterItem}
-            onChange={(e) => { setFilterItem(e.target.value); setPage(0); }}
-            placeholder="Filtrer par article..."
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 flex-1 min-w-0"
-          />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          />
+        {/* Ligne 2 : article */}
+        <input
+          type="text"
+          value={filterItem}
+          onChange={(e) => { setFilterItem(e.target.value); setPage(0); }}
+          placeholder="Filtrer par article..."
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+
+        {/* Ligne 3 : dates */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">Du</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">Au</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
         </div>
       </div>
 
