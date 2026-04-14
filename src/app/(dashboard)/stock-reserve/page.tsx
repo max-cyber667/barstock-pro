@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Warehouse, ScanLine } from "lucide-react";
+import { Warehouse, ScanLine, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StockTable } from "@/components/stock/StockTable";
 import { ScanLivraisonModal } from "@/components/stock/ScanLivraisonModal";
+import { NouvelArticleModal } from "@/components/stock/NouvelArticleModal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StockWithItem } from "@/types";
 import type { Item } from "@/types";
@@ -15,6 +16,7 @@ export default function StockReservePage() {
   const [isManager, setIsManager] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanOpen, setScanOpen] = useState(false);
+  const [newArticleOpen, setNewArticleOpen] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -49,13 +51,22 @@ export default function StockReservePage() {
           </div>
         </div>
         {isManager && (
-          <button
-            onClick={() => setScanOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-lg font-medium transition-colors"
-          >
-            <ScanLine size={16} />
-            <span className="hidden sm:inline">Scanner livraison</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setNewArticleOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg font-medium transition-colors"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nouvel article</span>
+            </button>
+            <button
+              onClick={() => setScanOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-lg font-medium transition-colors"
+            >
+              <ScanLine size={16} />
+              <span className="hidden sm:inline">Scanner livraison</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -63,6 +74,12 @@ export default function StockReservePage() {
         location="reserve"
         initialRows={stock}
         isManager={isManager}
+      />
+
+      <NouvelArticleModal
+        open={newArticleOpen}
+        onClose={() => setNewArticleOpen(false)}
+        onDone={load}
       />
 
       <ScanLivraisonModal
