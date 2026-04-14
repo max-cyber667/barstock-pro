@@ -112,29 +112,29 @@ export function StockTable({ location, initialRows, isManager }: Props) {
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 sm:flex gap-2">
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 min-w-0"
             >
-              <option value="all">Toutes catégories</option>
+              <option value="all">Catégorie</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <select
               value={filterSupplier}
               onChange={(e) => setFilterSupplier(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 min-w-0"
             >
-              <option value="all">Tous fournisseurs</option>
+              <option value="all">Fournisseur</option>
               {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 min-w-0"
             >
-              <option value="all">Tous statuts</option>
+              <option value="all">Statut</option>
               <option value="low">Faible</option>
               <option value="empty">Rupture</option>
             </select>
