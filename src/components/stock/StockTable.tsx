@@ -40,9 +40,7 @@ export function StockTable({ location, initialRows, isManager }: Props) {
     new Set(rows.map((r) => r.items?.categories?.name).filter(Boolean))
   ) as string[];
 
-  const suppliers = Array.from(
-    new Set(rows.map((r) => r.items?.supplier).filter(Boolean))
-  ) as string[];
+  const suppliers = ["Maison Richard", "France Boissons", "Café Richard"];
 
   const filtered = rows.filter((r) => {
     if (search && !r.items?.name.toLowerCase().includes(search.toLowerCase())) return false;
