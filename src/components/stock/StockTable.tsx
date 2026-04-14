@@ -24,7 +24,7 @@ export function StockTable({ location, initialRows, isManager }: Props) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [filterSupplier, setFilterSupplier] = useState("all");
+  const [filterSupplier, setFilterSupplier] = useState("Maison Richard");
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const { success, error: showError } = useToast();
@@ -124,7 +124,6 @@ export function StockTable({ location, initialRows, isManager }: Props) {
               onChange={(e) => setFilterSupplier(e.target.value)}
               className="text-xs sm:text-sm border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 min-w-0"
             >
-              <option value="all">Fournisseur</option>
               {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select
