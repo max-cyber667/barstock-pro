@@ -207,7 +207,6 @@ export default function ReassortPage() {
                     max={item.reserveQty}
                     step="0.5"
                   />
-                  <span className="text-sm text-gray-500 w-8">{item.unit}</span>
                   <button onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
                     <Plus size={14} />
                   </button>
@@ -262,7 +261,6 @@ export default function ReassortPage() {
                   max={item.reserveQty}
                   step="0.5"
                 />
-                <span className="text-sm text-gray-500 w-8">{item.unit}</span>
                 <button onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
                   <Plus size={14} />
                 </button>
