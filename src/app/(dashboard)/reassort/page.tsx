@@ -79,7 +79,7 @@ export default function ReassortPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const filteredItems = items.filter((i) => i.supplier === filterSupplier);
+  const filteredItems = items.filter((i) => i.supplier === filterSupplier && i.reserveQty > 0);
   const suggestions = filteredItems.filter((i) => i.suggested > 0);
   const draftItems = items.filter((i) => i.selected > 0);
 
