@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Package, Plus, Pencil, Trash2 } from "lucide-react";
+import { Package, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -134,25 +134,14 @@ export default function ArticlesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <Package size={20} className="text-green-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Articles</h1>
-            <p className="text-gray-500 text-sm">Catalogue de produits</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-green-100 rounded-lg">
+          <Package size={20} className="text-green-600" />
         </div>
-        {isManager && (
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 font-medium"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Ajouter</span>
-          </button>
-        )}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Articles</h1>
+          <p className="text-gray-500 text-sm">Catalogue de produits</p>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
