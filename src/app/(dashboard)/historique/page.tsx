@@ -4,11 +4,20 @@ import { useEffect, useState, useCallback } from "react";
 import { History, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { formatDate, movementTypeLabel, movementTypeColor } from "@/lib/utils";
+import { formatDate, formatEur, movementTypeLabel, movementTypeColor } from "@/lib/utils";
 import { StockMovement } from "@/types";
 
 const PAGE_SIZE = 25;
 const MOVE_TYPES = ["tous", "livraison", "reassort", "ajustement", "perte"];
+
+// Midi = avant 16h, Soir = à partir de 16h
+function matchesService(iso: string, service: string): boolean {
+  if (service === "tous") return true;
+  const hour = new Date(iso).getHours();
+  if (service === "midi") return hour < 16;
+  if (service === "soir") return hour >= 16;
+  return true;
+}
 
 export default function HistoriquePage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -19,34 +28,54 @@ export default function HistoriquePage() {
   const [filterItem, setFilterItem] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [service, setService] = useState("tous");
 
   const load = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
 
+    // Si filtre service actif, on charge plus de résultats pour filtrer côté client
+    const useClientFilter = service !== "tous";
+    const limit = useClientFilter ? 500 : PAGE_SIZE;
+
     let query = supabase
       .from("stock_movements")
-      .select("*, items(name, unit), profiles(display_name, email)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      .select("*, items(name, unit, cost_per_unit), profiles(display_name, email)", { count: "exact" })
+      .order("created_at", { ascending: false });
 
     if (filterType !== "tous") query = query.eq("type", filterType);
     if (dateFrom) query = query.gte("created_at", dateFrom);
     if (dateTo) query = query.lte("created_at", dateTo + "T23:59:59");
 
+    if (!useClientFilter) {
+      query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    } else {
+      query = query.limit(limit);
+    }
+
     const { data, count } = await query;
 
-    let filtered = data ?? [];
+    let filtered = (data ?? []) as StockMovement[];
+
     if (filterItem) {
-      filtered = filtered.filter((m: StockMovement) =>
+      filtered = filtered.filter((m) =>
         m.items?.name.toLowerCase().includes(filterItem.toLowerCase())
       );
     }
 
-    setMovements(filtered as StockMovement[]);
-    setTotal(count ?? 0);
+    if (useClientFilter) {
+      filtered = filtered.filter((m) => matchesService(m.created_at, service));
+      // Pagination côté client
+      const start = page * PAGE_SIZE;
+      setTotal(filtered.length);
+      filtered = filtered.slice(start, start + PAGE_SIZE);
+    } else {
+      setTotal(count ?? 0);
+    }
+
+    setMovements(filtered);
     setLoading(false);
-  }, [page, filterType, filterItem, dateFrom, dateTo]);
+  }, [page, filterType, filterItem, dateFrom, dateTo, service]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -54,28 +83,39 @@ export default function HistoriquePage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("stock_movements")
-      .select("*, items(name, unit), profiles(display_name, email)")
+      .select("*, items(name, unit, cost_per_unit), profiles(display_name, email)")
       .order("created_at", { ascending: false });
 
     if (!data) return;
 
-    const rows = [
-      ["Date", "Type", "Article", "Quantité", "Unité", "Direction", "De", "Vers", "Utilisateur", "Notes"],
-      ...(data as StockMovement[]).map((m) => [
-        formatDate(m.created_at),
-        movementTypeLabel(m.type),
-        m.items?.name ?? "",
-        m.quantity,
-        m.items?.unit ?? "",
-        m.direction,
-        m.from_location ?? "",
-        m.to_location ?? "",
-        m.profiles?.display_name ?? m.profiles?.email ?? "",
-        m.notes ?? "",
-      ]),
+    let rows = (data as StockMovement[]);
+    if (filterType !== "tous") rows = rows.filter((m) => m.type === filterType);
+    if (service !== "tous") rows = rows.filter((m) => matchesService(m.created_at, service));
+
+    const csvRows = [
+      ["Date", "Service", "Type", "Article", "Quantité", "Unité", "Coût unitaire", "Coût total", "Mouvement", "Utilisateur"],
+      ...rows.map((m) => {
+        const hour = new Date(m.created_at).getHours();
+        const svc = hour < 16 ? "Midi" : "Soir";
+        const cout = m.cost_at_time ?? 0;
+        return [
+          formatDate(m.created_at),
+          svc,
+          movementTypeLabel(m.type),
+          m.items?.name ?? "",
+          m.quantity,
+          m.items?.unit ?? "",
+          cout.toFixed(2),
+          (cout * m.quantity).toFixed(2),
+          m.from_location && m.to_location && m.from_location !== m.to_location
+            ? `${m.from_location} → ${m.to_location}`
+            : m.from_location ?? m.to_location ?? "",
+          m.profiles?.display_name ?? m.profiles?.email ?? "",
+        ];
+      }),
     ];
 
-    const csv = rows.map((r) => r.join(";")).join("\n");
+    const csv = csvRows.map((r) => r.join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -119,6 +159,24 @@ export default function HistoriquePage() {
               <option key={t} value={t}>{t === "tous" ? "Tous les types" : movementTypeLabel(t)}</option>
             ))}
           </select>
+
+          {/* Filtre Midi / Soir */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+            {(["tous", "midi", "soir"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => { setService(s); setPage(0); }}
+                className={`px-3 py-2 transition-colors ${
+                  service === s
+                    ? "bg-amber-500 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {s === "tous" ? "Tout" : s === "midi" ? "Midi" : "Soir"}
+              </button>
+            ))}
+          </div>
+
           <input
             type="text"
             value={filterItem}
@@ -149,61 +207,88 @@ export default function HistoriquePage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Date</th>
+                  <th className="px-4 py-3 text-left font-medium">Date & heure</th>
+                  <th className="px-4 py-3 text-left font-medium">Service</th>
                   <th className="px-4 py-3 text-left font-medium">Type</th>
                   <th className="px-4 py-3 text-left font-medium">Article</th>
                   <th className="px-4 py-3 text-center font-medium">Quantité</th>
-                  <th className="px-4 py-3 text-left font-medium">Mouvement</th>
+                  <th className="px-4 py-3 text-right font-medium">Coût</th>
                   <th className="px-4 py-3 text-left font-medium">Utilisateur</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {movements.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(m.created_at)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${movementTypeColor(m.type)}`}>
-                        {movementTypeLabel(m.type)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{m.items?.name}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={m.direction === "out" ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                        {m.direction === "out" ? "-" : "+"}{m.quantity} {m.items?.unit}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {m.from_location && m.to_location && m.from_location !== m.to_location
-                        ? `${m.from_location} → ${m.to_location}`
-                        : m.from_location ?? m.to_location ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{m.profiles?.display_name ?? m.profiles?.email ?? "—"}</td>
-                  </tr>
-                ))}
+                {movements.map((m) => {
+                  const hour = new Date(m.created_at).getHours();
+                  const svc = hour < 16 ? "Midi" : "Soir";
+                  const cout = (m.cost_at_time ?? 0) * m.quantity;
+                  return (
+                    <tr key={m.id} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(m.created_at)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          svc === "Midi" ? "bg-orange-100 text-orange-700" : "bg-indigo-100 text-indigo-700"
+                        }`}>
+                          {svc}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${movementTypeColor(m.type)}`}>
+                          {movementTypeLabel(m.type)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{m.items?.name}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={m.direction === "out" ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                          {m.direction === "out" ? "-" : "+"}{m.quantity} {m.items?.unit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {cout > 0 ? formatEur(cout) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{m.profiles?.display_name ?? m.profiles?.email ?? "—"}</td>
+                    </tr>
+                  );
+                })}
                 {movements.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">Aucun mouvement trouvé</td>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">Aucun mouvement trouvé</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
+          {/* Mobile */}
           <div className="sm:hidden divide-y divide-gray-100">
-            {movements.map((m) => (
-              <div key={m.id} className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${movementTypeColor(m.type)}`}>
-                    {movementTypeLabel(m.type)}
-                  </span>
-                  <span className={`text-sm font-medium ${m.direction === "out" ? "text-red-600" : "text-green-600"}`}>
-                    {m.direction === "out" ? "-" : "+"}{m.quantity} {m.items?.unit}
-                  </span>
+            {movements.map((m) => {
+              const hour = new Date(m.created_at).getHours();
+              const svc = hour < 16 ? "Midi" : "Soir";
+              const cout = (m.cost_at_time ?? 0) * m.quantity;
+              return (
+                <div key={m.id} className="p-4">
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${movementTypeColor(m.type)}`}>
+                        {movementTypeLabel(m.type)}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        svc === "Midi" ? "bg-orange-100 text-orange-700" : "bg-indigo-100 text-indigo-700"
+                      }`}>
+                        {svc}
+                      </span>
+                    </div>
+                    <span className={`text-sm font-medium ${m.direction === "out" ? "text-red-600" : "text-green-600"}`}>
+                      {m.direction === "out" ? "-" : "+"}{m.quantity} {m.items?.unit}
+                    </span>
+                  </div>
+                  <p className="font-medium text-gray-900 text-sm">{m.items?.name}</p>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <p className="text-xs text-gray-400">{formatDate(m.created_at)}</p>
+                    {cout > 0 && <p className="text-xs text-gray-500 font-medium">{formatEur(cout)}</p>}
+                  </div>
                 </div>
-                <p className="font-medium text-gray-900 text-sm">{m.items?.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{formatDate(m.created_at)}</p>
-              </div>
-            ))}
+              );
+            })}
             {movements.length === 0 && (
               <p className="p-8 text-center text-gray-400 text-sm">Aucun mouvement trouvé</p>
             )}

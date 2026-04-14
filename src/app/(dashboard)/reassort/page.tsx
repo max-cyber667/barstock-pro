@@ -12,6 +12,7 @@ interface ReassortItem {
   itemId: string;
   itemName: string;
   unit: string;
+  costPerUnit: number;
   reserveQty: number;
   barQty: number;
   minStockBar: number;
@@ -34,7 +35,7 @@ export default function ReassortPage() {
     setUserId(user?.id ?? null);
 
     const [{ data: reserve }, { data: bar }, { data: draft }] = await Promise.all([
-      supabase.from("stock").select("id, item_id, quantity, items(name, unit, min_stock_bar, min_stock_reserve)").eq("location", "reserve"),
+      supabase.from("stock").select("id, item_id, quantity, items(name, unit, cost_per_unit, min_stock_bar, min_stock_reserve)").eq("location", "reserve"),
       supabase.from("stock").select("item_id, quantity").eq("location", "bar"),
       supabase.from("reassort_drafts").select("id, item_id, quantity").eq("user_id", user?.id ?? ""),
     ]);
@@ -42,7 +43,7 @@ export default function ReassortPage() {
     const barMap = new Map((bar ?? []).map((b: { item_id: string; quantity: number }) => [b.item_id, b.quantity]));
     const draftMap = new Map((draft ?? []).map((d: { id: string; item_id: string; quantity: number }) => [d.item_id, { id: d.id, quantity: d.quantity }]));
 
-    type ReserveRow = { id: string; item_id: string; quantity: number; items: { name: string; unit: string; min_stock_bar: number; min_stock_reserve: number } };
+    type ReserveRow = { id: string; item_id: string; quantity: number; items: { name: string; unit: string; cost_per_unit: number; min_stock_bar: number; min_stock_reserve: number } };
     const rows: ReassortItem[] = ((reserve ?? []) as unknown as ReserveRow[])
       .filter((r) => r.quantity > 0)
       .map((r) => {
@@ -55,6 +56,7 @@ export default function ReassortPage() {
           itemId: r.item_id,
           itemName: r.items?.name ?? "",
           unit: r.items?.unit ?? "",
+          costPerUnit: r.items?.cost_per_unit ?? 0,
           reserveQty: r.quantity,
           barQty,
           minStockBar: minBar,
@@ -133,6 +135,7 @@ export default function ReassortPage() {
         to_location: "bar",
         quantity: item.selected,
         direction: "transfer",
+        cost_at_time: item.costPerUnit,
       });
     }
 
