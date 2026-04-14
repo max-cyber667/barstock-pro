@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Wine, Warehouse, TrendingDown, ArrowLeftRight, AlertTriangle } from "lucide-react";
+import { Wine, Warehouse, TrendingDown, ArrowLeftRight, AlertTriangle, Bell } from "lucide-react";
 import Link from "next/link";
 import { formatEur, formatDate, movementTypeLabel, movementTypeColor, stockStatus } from "@/lib/utils";
 
@@ -26,11 +26,13 @@ export default async function DashboardPage() {
   const barLow = barRows.filter((r) => r.items.min_stock_bar > 0 && r.quantity <= r.items.min_stock_bar).length;
   const reserveLow = reserveRows.filter((r) => r.items.min_stock_reserve > 0 && r.quantity <= r.items.min_stock_reserve).length;
   const barEmpty = barRows.filter((r) => r.quantity <= 0).length;
+  const barNearEmpty = barRows.filter((r) => r.items.min_stock_bar > 0 && r.quantity > 0 && r.quantity <= r.items.min_stock_bar).length;
 
   const stats = [
     { label: "Valeur stock bar", value: formatEur(barValue), icon: Wine, color: "bg-amber-500", sub: `${barLow} article${barLow > 1 ? "s" : ""} en stock faible`, href: "/stock-bar" },
     { label: "Valeur réserve", value: formatEur(reserveValue), icon: Warehouse, color: "bg-indigo-500", sub: `${reserveLow} article${reserveLow > 1 ? "s" : ""} en stock faible`, href: "/stock-reserve" },
     { label: "Ruptures bar", value: String(barEmpty), icon: TrendingDown, color: "bg-red-500", sub: "articles à zéro au bar", href: "/stock-bar" },
+    { label: "Ruptures proches", value: String(barNearEmpty), icon: Bell, color: "bg-orange-400", sub: "articles sous le seuil au bar", href: "/stock-bar" },
     { label: "Articles total", value: String(items?.length ?? 0), icon: ArrowLeftRight, color: "bg-green-500", sub: "produits dans le catalogue", href: "/articles" },
   ];
 
@@ -50,7 +52,7 @@ export default async function DashboardPage() {
         <p className="text-gray-500 text-sm mt-0.5">Vue d&apos;ensemble de votre stock</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
