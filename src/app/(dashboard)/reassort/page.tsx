@@ -12,6 +12,7 @@ interface ReassortItem {
   itemId: string;
   itemName: string;
   unit: string;
+  supplier: string;
   costPerUnit: number;
   reserveQty: number;
   barQty: number;
@@ -27,7 +28,10 @@ export default function ReassortPage() {
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
+  const [filterSupplier, setFilterSupplier] = useState("Maison Richard");
   const { success, error: showError } = useToast();
+
+  const suppliers = ["Maison Richard", "France Boissons", "Café Richard"];
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -35,7 +39,7 @@ export default function ReassortPage() {
     setUserId(user?.id ?? null);
 
     const [{ data: reserve }, { data: bar }, { data: draft }] = await Promise.all([
-      supabase.from("stock").select("id, item_id, quantity, items(name, unit, cost_per_unit, min_stock_bar, min_stock_reserve)").eq("location", "reserve"),
+      supabase.from("stock").select("id, item_id, quantity, items(name, unit, supplier, cost_per_unit, min_stock_bar, min_stock_reserve)").eq("location", "reserve"),
       supabase.from("stock").select("item_id, quantity").eq("location", "bar"),
       supabase.from("reassort_drafts").select("id, item_id, quantity").eq("user_id", user?.id ?? ""),
     ]);
@@ -43,9 +47,8 @@ export default function ReassortPage() {
     const barMap = new Map((bar ?? []).map((b: { item_id: string; quantity: number }) => [b.item_id, b.quantity]));
     const draftMap = new Map((draft ?? []).map((d: { id: string; item_id: string; quantity: number }) => [d.item_id, { id: d.id, quantity: d.quantity }]));
 
-    type ReserveRow = { id: string; item_id: string; quantity: number; items: { name: string; unit: string; cost_per_unit: number; min_stock_bar: number; min_stock_reserve: number } };
+    type ReserveRow = { id: string; item_id: string; quantity: number; items: { name: string; unit: string; supplier: string; cost_per_unit: number; min_stock_bar: number; min_stock_reserve: number } };
     const rows: ReassortItem[] = ((reserve ?? []) as unknown as ReserveRow[])
-      .filter((r) => r.quantity > 0)
       .map((r) => {
         const barQty = barMap.get(r.item_id) ?? 0;
         const minBar = r.items?.min_stock_bar ?? 0;
@@ -56,6 +59,7 @@ export default function ReassortPage() {
           itemId: r.item_id,
           itemName: r.items?.name ?? "",
           unit: r.items?.unit ?? "",
+          supplier: r.items?.supplier ?? "",
           costPerUnit: r.items?.cost_per_unit ?? 0,
           reserveQty: r.quantity,
           barQty,
@@ -73,7 +77,8 @@ export default function ReassortPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const suggestions = items.filter((i) => i.suggested > 0);
+  const filteredItems = items.filter((i) => i.supplier === filterSupplier);
+  const suggestions = filteredItems.filter((i) => i.suggested > 0);
   const draftItems = items.filter((i) => i.selected > 0);
 
   async function setQty(itemId: string, value: number) {
@@ -151,14 +156,23 @@ export default function ReassortPage() {
 
   return (
     <div className="space-y-6 pb-32">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <ArrowLeftRight size={20} className="text-purple-600" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <ArrowLeftRight size={20} className="text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Réassort</h1>
+            <p className="text-gray-500 text-sm">Préparez votre réassort et confirmez le transfert</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Réassort</h1>
-          <p className="text-gray-500 text-sm">Préparez votre réassort et confirmez le transfert</p>
-        </div>
+        <select
+          value={filterSupplier}
+          onChange={(e) => setFilterSupplier(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
 
       {/* Suggestions */}
@@ -237,48 +251,57 @@ export default function ReassortPage() {
           <p className="text-xs text-gray-500 mt-0.5">Sélectionnez les quantités à transférer vers le bar</p>
         </div>
         <div className="divide-y divide-gray-50">
-          {items.map((item) => (
-            <div key={item.itemId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900">{item.itemName}</p>
-                  {item.suggested > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
-                      Suggéré : {item.suggested} {item.unit}
-                    </span>
-                  )}
-                  {item.selected > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded font-medium">
-                      Dans le brouillon
-                    </span>
-                  )}
+          {filteredItems.map((item) => {
+            const emptyReserve = item.reserveQty <= 0;
+            return (
+              <div key={item.itemId} className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${emptyReserve ? "opacity-50" : ""}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center flex-wrap gap-1.5">
+                    <p className="font-medium text-gray-900">{item.itemName}</p>
+                    {item.suggested > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                        Suggéré : {item.suggested} {item.unit}
+                      </span>
+                    )}
+                    {item.selected > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded font-medium">
+                        Dans le brouillon
+                      </span>
+                    )}
+                    {emptyReserve && (
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">
+                        Réserve vide
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Réserve : {formatQty(item.reserveQty, item.unit)} · Bar : {formatQty(item.barQty, item.unit)}
+                    {item.minStockBar > 0 && ` · Seuil : ${formatQty(item.minStockBar, item.unit)}`}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Réserve : {formatQty(item.reserveQty, item.unit)} · Bar : {formatQty(item.barQty, item.unit)}
-                  {item.minStockBar > 0 && ` · Seuil : ${formatQty(item.minStockBar, item.unit)}`}
-                </p>
+                <div className="flex items-center gap-2">
+                  <button disabled={emptyReserve} onClick={() => setQty(item.itemId, item.selected - 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:cursor-not-allowed">
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="number"
+                    value={item.selected}
+                    onChange={(e) => setQty(item.itemId, parseFloat(e.target.value) || 0)}
+                    className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-50"
+                    min="0"
+                    max={item.reserveQty}
+                    step="0.5"
+                    disabled={emptyReserve}
+                  />
+                  <button disabled={emptyReserve} onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:cursor-not-allowed">
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setQty(item.itemId, item.selected - 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="number"
-                  value={item.selected}
-                  onChange={(e) => setQty(item.itemId, parseFloat(e.target.value) || 0)}
-                  className="w-20 text-center border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  min="0"
-                  max={item.reserveQty}
-                  step="0.5"
-                />
-                <button onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
-                  <Plus size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {items.length === 0 && (
-            <p className="p-8 text-center text-gray-400 text-sm">Réserve vide</p>
+            );
+          })}
+          {filteredItems.length === 0 && (
+            <p className="p-8 text-center text-gray-400 text-sm">Aucun article pour ce fournisseur</p>
           )}
         </div>
       </div>
