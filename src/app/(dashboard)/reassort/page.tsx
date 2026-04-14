@@ -29,6 +29,8 @@ export default function ReassortPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState("Maison Richard");
+  const [serviceDate, setServiceDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [servicePeriod, setServicePeriod] = useState<"midi" | "soir" | null>(null);
   const { success, error: showError } = useToast();
 
   const suppliers = ["Maison Richard", "France Boissons", "Café Richard"];
@@ -121,8 +123,13 @@ export default function ReassortPage() {
 
   async function handleConfirm() {
     if (!draftItems.length || !userId) return;
+    if (!servicePeriod) { showError("Sélectionnez Midi ou Soir avant de confirmer"); return; }
     setSaving(true);
     const supabase = createClient();
+
+    // Construire le timestamp : Midi = 12:00, Soir = 20:00
+    const hour = servicePeriod === "midi" ? "12:00:00" : "20:00:00";
+    const movementTime = `${serviceDate}T${hour}`;
 
     for (const item of draftItems) {
       await supabase.from("stock").update({ quantity: item.reserveQty - item.selected }).eq("id", item.stockReserveId);
@@ -141,6 +148,7 @@ export default function ReassortPage() {
         quantity: item.selected,
         direction: "transfer",
         cost_at_time: item.costPerUnit,
+        created_at: movementTime,
       });
     }
 
@@ -173,6 +181,37 @@ export default function ReassortPage() {
         >
           {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+      </div>
+
+      {/* Date & service */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1">
+          <label className="block text-xs text-gray-500 mb-1 font-medium">Date du service</label>
+          <input
+            type="date"
+            value={serviceDate}
+            onChange={(e) => setServiceDate(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs text-gray-500 mb-1 font-medium">Service <span className="text-red-500">*</span></label>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+            {(["midi", "soir"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setServicePeriod(s)}
+                className={`flex-1 py-2.5 transition-colors capitalize ${
+                  servicePeriod === s
+                    ? s === "midi" ? "bg-orange-500 text-white" : "bg-indigo-600 text-white"
+                    : "bg-white text-gray-600 active:bg-gray-100"
+                }`}
+              >
+                {s === "midi" ? "Midi" : "Soir"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Suggestions */}
