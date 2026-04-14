@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ArrowLeftRight, Lightbulb, Check, Minus, Plus, Trash2, Save } from "lucide-react";
+import { ArrowLeftRight, Lightbulb, Check, Minus, Plus, Trash2, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -25,6 +25,7 @@ export default function ReassortPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [draftOpen, setDraftOpen] = useState(false);
   const { success, error: showError } = useToast();
 
   const load = useCallback(async () => {
@@ -178,45 +179,51 @@ export default function ReassortPage() {
       {/* Brouillon en cours */}
       {draftItems.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-indigo-200">
-          <div className="p-4 border-b border-indigo-100 flex items-center justify-between">
+          <button
+            onClick={() => setDraftOpen((o) => !o)}
+            className="w-full p-4 flex items-center justify-between"
+          >
             <div className="flex items-center gap-2">
               <Save size={16} className="text-indigo-600" />
               <h2 className="font-semibold text-gray-900">Brouillon en cours</h2>
               <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{draftItems.length} article{draftItems.length > 1 ? "s" : ""}</span>
             </div>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {draftItems.map((item) => (
-              <div key={item.itemId} className="p-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900">{item.itemName}</p>
-                  <p className="text-xs text-gray-500">
-                    Réserve : {formatQty(item.reserveQty, item.unit)} · Bar : {formatQty(item.barQty, item.unit)}
-                  </p>
+            {draftOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+          </button>
+          {draftOpen && (
+            <div className="divide-y divide-gray-50 border-t border-indigo-100">
+              {draftItems.map((item) => (
+                <div key={item.itemId} className="p-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900">{item.itemName}</p>
+                    <p className="text-xs text-gray-500">
+                      Réserve : {formatQty(item.reserveQty, item.unit)} · Bar : {formatQty(item.barQty, item.unit)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setQty(item.itemId, item.selected - 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
+                      <Minus size={14} />
+                    </button>
+                    <input
+                      type="number"
+                      value={item.selected}
+                      onChange={(e) => setQty(item.itemId, parseFloat(e.target.value) || 0)}
+                      className="w-16 text-center border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      min="0"
+                      max={item.reserveQty}
+                      step="0.5"
+                    />
+                    <button onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
+                      <Plus size={14} />
+                    </button>
+                    <button onClick={() => setQty(item.itemId, 0)} className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-500">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setQty(item.itemId, item.selected - 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
-                    <Minus size={14} />
-                  </button>
-                  <input
-                    type="number"
-                    value={item.selected}
-                    onChange={(e) => setQty(item.itemId, parseFloat(e.target.value) || 0)}
-                    className="w-16 text-center border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    min="0"
-                    max={item.reserveQty}
-                    step="0.5"
-                  />
-                  <button onClick={() => setQty(item.itemId, item.selected + 1)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100">
-                    <Plus size={14} />
-                  </button>
-                  <button onClick={() => setQty(item.itemId, 0)} className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-500">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
