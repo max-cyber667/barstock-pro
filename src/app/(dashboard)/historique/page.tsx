@@ -10,15 +10,15 @@ import { StockMovement } from "@/types";
 const PAGE_SIZE = 25;
 const MOVE_TYPES = ["tous", "livraison", "reassort", "ajustement", "perte"];
 
-function matchesService(iso: string, service: string): boolean {
+function matchesService(iso: string, service: string, notes?: string | null): boolean {
   if (service === "tous") return true;
-  const hour = new Date(iso).getHours();
-  if (service === "midi") return hour < 16;
-  if (service === "soir") return hour >= 16;
-  return true;
+  const svc = getService(iso, notes).toLowerCase();
+  return svc === service;
 }
 
-function getService(iso: string) {
+function getService(iso: string, notes?: string | null) {
+  if (notes?.toLowerCase().includes("midi")) return "Midi";
+  if (notes?.toLowerCase().includes("soir")) return "Soir";
   return new Date(iso).getHours() < 16 ? "Midi" : "Soir";
 }
 
@@ -42,7 +42,7 @@ function groupReassorts(movements: StockMovement[]): ReassortSession[] {
     .map(([key, items]) => ({
       key,
       created_at: key,
-      service: getService(key),
+      service: getService(key, items[0]?.notes),
       items,
       totalCost: items.reduce((s, m) => s + (m.cost_at_time ?? 0) * m.quantity, 0),
       user: items[0].profiles?.display_name ?? items[0].profiles?.email ?? "—",
@@ -95,7 +95,7 @@ export default function HistoriquePage() {
       );
     }
     if (service !== "tous") {
-      filtered = filtered.filter((m) => matchesService(m.created_at, service));
+      filtered = filtered.filter((m) => matchesService(m.created_at, service, m.notes));
     }
 
     if (!useClientFilter) {
@@ -132,7 +132,7 @@ export default function HistoriquePage() {
 
     let rows = (data as StockMovement[]);
     if (filterType !== "tous") rows = rows.filter((m) => m.type === filterType);
-    if (service !== "tous") rows = rows.filter((m) => matchesService(m.created_at, service));
+    if (service !== "tous") rows = rows.filter((m) => matchesService(m.created_at, service, m.notes));
 
     const csvRows = [
       ["Date", "Service", "Type", "Article", "Quantité", "Unité", "Coût unitaire", "Coût total", "Utilisateur"],
@@ -140,7 +140,7 @@ export default function HistoriquePage() {
         const cout = m.cost_at_time ?? 0;
         return [
           formatDate(m.created_at),
-          getService(m.created_at),
+          getService(m.created_at, m.notes),
           movementTypeLabel(m.type),
           m.items?.name ?? "",
           m.quantity,
@@ -317,7 +317,7 @@ export default function HistoriquePage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {movements.map((m) => {
-                  const svc = getService(m.created_at);
+                  const svc = getService(m.created_at, m.notes);
                   const cout = (m.cost_at_time ?? 0) * m.quantity;
                   return (
                     <tr key={m.id} className="hover:bg-gray-50/50">

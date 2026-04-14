@@ -131,15 +131,19 @@ export default function ReassortPage() {
     const hour = servicePeriod === "midi" ? "12:00:00" : "20:00:00";
     const movementTime = `${serviceDate}T${hour}`;
 
+    let hasError = false;
+
     for (const item of draftItems) {
-      await supabase.from("stock").update({ quantity: item.reserveQty - item.selected }).eq("id", item.stockReserveId);
+      const { error: e1 } = await supabase.from("stock").update({ quantity: item.reserveQty - item.selected }).eq("id", item.stockReserveId);
+      if (e1) { showError(`Erreur stock réserve : ${e1.message}`); hasError = true; break; }
 
       const { data: barStock } = await supabase.from("stock").select("id, quantity").eq("item_id", item.itemId).eq("location", "bar").single();
       if (barStock) {
-        await supabase.from("stock").update({ quantity: barStock.quantity + item.selected }).eq("id", barStock.id);
+        const { error: e2 } = await supabase.from("stock").update({ quantity: barStock.quantity + item.selected }).eq("id", barStock.id);
+        if (e2) { showError(`Erreur stock bar : ${e2.message}`); hasError = true; break; }
       }
 
-      await supabase.from("stock_movements").insert({
+      const { error: e3 } = await supabase.from("stock_movements").insert({
         item_id: item.itemId,
         user_id: userId,
         type: "reassort",
@@ -148,9 +152,12 @@ export default function ReassortPage() {
         quantity: item.selected,
         direction: "transfer",
         cost_at_time: item.costPerUnit,
-        created_at: movementTime,
+        notes: `Service ${servicePeriod} du ${serviceDate}`,
       });
+      if (e3) { showError(`Erreur mouvement : ${e3.message}`); hasError = true; break; }
     }
+
+    if (hasError) { setSaving(false); return; }
 
     // Vider le brouillon
     await supabase.from("reassort_drafts").delete().eq("user_id", userId);
