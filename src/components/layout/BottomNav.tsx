@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Wine,
-  Warehouse,
   ArrowLeftRight,
+  ShoppingBag,
   History,
   MoreHorizontal,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import { Role } from "@/types";
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/stock-bar", label: "Bar", icon: Wine },
-  { href: "/stock-reserve", label: "Réserve", icon: Warehouse },
+  { href: "/ventes", label: "Ventes", icon: ShoppingBag },
   { href: "/reassort", label: "Réassort", icon: ArrowLeftRight },
   { href: "/historique", label: "Historique", icon: History },
 ];
@@ -48,6 +48,7 @@ export function BottomNav({ role }: { role: Role | null }) {
         <Link
           href="/articles"
           className={`flex-1 flex flex-col items-center py-2 gap-0.5 text-xs transition-colors ${
+            pathname.startsWith("/stock-reserve") ||
             pathname.startsWith("/articles") ||
             pathname.startsWith("/couts") ||
             pathname.startsWith("/commandes") ||

@@ -15,6 +15,7 @@ import {
   LogOut,
   GlassWater,
   ClipboardList,
+  ShoppingBag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { href: "/reassort", label: "Réassort", icon: ArrowLeftRight },
   { href: "/historique", label: "Historique", icon: History },
   { href: "/articles", label: "Articles", icon: Package, minRole: "manager" },
+  { href: "/ventes", label: "Ventes", icon: ShoppingBag },
   { href: "/inventaire", label: "Inventaires", icon: ClipboardList, minRole: "manager" },
   { href: "/cocktails", label: "Cocktails", icon: GlassWater, minRole: "manager" },
   { href: "/couts", label: "Coûts", icon: TrendingUp, minRole: "manager" },
