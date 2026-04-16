@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, CheckCircle, Minus, Plus, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, CheckCircle, Minus, Plus, Search, ChevronDown, ChevronRight, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { COCKTAILS, RECIPES, CATEGORIE_COLORS } from "../../../(dashboard)/cocktails/data";
+import { ScanTicketVentesModal } from "@/components/stock/ScanTicketVentesModal";
 
 type Session = { id: string; date: string; service: string; status: string; notes: string | null };
 type SalesMap = Record<string, number>;
@@ -41,6 +42,7 @@ export default function VentesSessionPage() {
   const [search, setSearch]         = useState("");
   const [openCats, setOpenCats]     = useState<Set<string>>(new Set(CATEGORIES));
   const [showResume, setShowResume] = useState(false);
+  const [showScan, setShowScan]     = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -129,6 +131,25 @@ export default function VentesSessionPage() {
     router.push("/ventes");
   }
 
+  async function handleScanImport(scanned: Record<string, number>) {
+    const supabase = createClient();
+    const updates: Record<string, number> = {};
+    for (const [nom, qty] of Object.entries(scanned)) {
+      updates[nom] = Math.max(0, (sales[nom] ?? 0) + qty);
+    }
+    setSales((s) => ({ ...s, ...updates }));
+    setSaving(true);
+    await Promise.all(
+      Object.entries(updates).map(([nom, quantity]) =>
+        supabase.from("sales_lines").upsert(
+          { session_id: id, cocktail_nom: nom, quantity },
+          { onConflict: "session_id,cocktail_nom" }
+        )
+      )
+    );
+    setSaving(false);
+  }
+
   function toggleCat(cat: string) {
     setOpenCats((prev) => {
       const next = new Set(prev);
@@ -168,6 +189,13 @@ export default function VentesSessionPage() {
             {isConfirme && " · ✅ Appliqué au stock"}
           </p>
         </div>
+        {!isConfirme && (
+          <button onClick={() => setShowScan(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm rounded-lg font-medium shrink-0">
+            <ScanLine size={16} />
+            <span className="hidden sm:inline">Scanner ticket</span>
+          </button>
+        )}
         {!isConfirme && totalCocktails > 0 && (
           <button onClick={handleConfirm} disabled={confirming}
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium disabled:opacity-50 shrink-0">
@@ -296,6 +324,12 @@ export default function VentesSessionPage() {
           </div>
         ))}
       </div>
+
+      <ScanTicketVentesModal
+        open={showScan}
+        onClose={() => setShowScan(false)}
+        onImport={handleScanImport}
+      />
 
       {/* Bouton confirmer en bas (mobile) */}
       {!isConfirme && totalCocktails > 0 && (
